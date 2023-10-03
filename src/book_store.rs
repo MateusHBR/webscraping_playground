@@ -130,12 +130,20 @@ pub async fn save_books_for_categories() -> Result<(), Box<dyn std::error::Error
     let output_path = Path::new("usercode/output/book_store/category");
     fs::create_dir_all(output_path)?;
 
+    let mut handles = vec![];
     for category in categories {
-        let mut output = File::create(format!(
-            "usercode/output/book_store/category/out_{}.txt",
-            category.category
-        ))?;
-        scrape_book_list(&category.url, &mut output).await?;
+        let handle = tokio::spawn(async move {
+            let mut output = File::create(format!(
+                "usercode/output/book_store/category/out_{}.txt",
+                category.category
+            ))
+            .unwrap();
+            scrape_book_list(&category.url, &mut output).await.unwrap();
+        });
+        handles.push(handle);
+    }
+    for handle in handles {
+        handle.await?;
     }
 
     Ok(())
